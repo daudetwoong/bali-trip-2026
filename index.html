@@ -1,0 +1,570 @@
+<!-- 발리(짱구·우붓)+롬복 남자넷 여행 세 가지 길 비교 — 달력 비행줄 + 지도 동선 + 매일 일정 + 항공 자리표 + 날씨 (바르셀로나 계획서 형식) -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>발리·롬복 남자넷 · 세 가지 길</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root{ --ink:#33312e; --paper:#fbf7ef; --card:#fff; --line:#e6ddcc; --accent:#c96f3f; --sea:#3d7a8c; --ok:#7f9a6d; --warn:#c9903f; --mute:#8a8377; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 14px 80px}
+  h1{font-size:23px;margin:0 0 4px}
+  .sub{color:var(--mute);font-size:13.5px;margin:0 0 14px}
+  h2{font-size:17px;margin:26px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  h2 small{font-weight:400;color:var(--mute);font-size:12.5px}
+  .bar{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13.5px}
+  .bar b{color:var(--accent)}
+  .tabs{display:flex;gap:8px;margin:14px 0 6px}
+  .tabs button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 6px;font:inherit;font-size:13.5px;font-weight:700;color:var(--mute);cursor:pointer;line-height:1.3}
+  .tabs button small{display:block;font-weight:400;font-size:11.5px}
+  .tabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tabs button.on small{color:#ddd}
+  table.cmp{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .cmp th,.cmp td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  .cmp th{background:#f3eee3;font-weight:700;white-space:nowrap}
+  .cmp tr:last-child td{border-bottom:none}
+  .cmp td.hi{font-weight:700;color:var(--accent)}
+  .scroll{overflow-x:auto}
+  .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;min-width:640px}
+  .cal .wd{font-size:11px;color:var(--mute);text-align:center;font-weight:700;padding:2px 0}
+  .cell{background:var(--card);border:1px solid var(--line);border-radius:10px;min-height:92px;padding:5px 4px 6px;font-size:11px;min-width:0;overflow:hidden}
+  .cell.off{background:transparent;border-style:dashed;opacity:.45;min-height:40px}
+  .cell .dn{font-weight:800;font-size:13px;display:flex;justify-content:space-between;align-items:baseline}
+  .cell .dn .sleep{font-weight:600;font-size:10px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62%}
+  .fl{margin-top:4px;border-left:4px solid #999;background:#f7f4ed;border-radius:4px;padding:2px 4px;line-height:1.3;min-width:0}
+  .fl b{font-size:11px;letter-spacing:-.3px;white-space:nowrap;display:block;overflow:hidden;text-overflow:ellipsis}
+  .fl span{display:block;color:var(--mute);font-size:9.5px;white-space:normal}
+  .fl.drive{border-left-style:dotted;background:transparent;color:var(--mute)}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mute);margin:8px 2px 0}
+  .legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+  .callist{display:none}
+  .callist .row{display:flex;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 9px;margin-bottom:5px;font-size:12px}
+  .callist .row .d{flex:0 0 64px;font-weight:800;font-size:13px}
+  .callist .row .d small{display:block;font-weight:600;color:var(--mute);font-size:10.5px}
+  .callist .row .fls{flex:1;min-width:0}
+  .callist .fl{margin:0 0 4px}
+  .callist .fl b,.callist .fl span{white-space:normal}
+  @media (max-width:640px){ .calwrap{display:none} .callist{display:block} }
+  .mapbtns{display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+  .mapbtns button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 11px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--mute)}
+  .mapbtns button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  #map{height:460px;width:100%;border-radius:14px;border:1px solid var(--line);background:#e9eef2}
+  .num{border:2px solid #fff;border-radius:50%;color:#fff;width:24px;height:24px;line-height:20px;text-align:center;font-weight:700;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .pop b{font-size:14px}.pop .m{color:#666;font-size:12px}
+  .aplabel{background:rgba(255,255,255,.9);border:1px solid #999;border-radius:6px;padding:1px 6px;font-weight:700;font-size:12px;white-space:nowrap}
+  .mapnote{font-size:12px;color:var(--mute);margin-top:6px}
+  .day{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:11px}
+  .day.fly{background:#f0f5f6;border-color:#cfe0e4}
+  .day.stop{background:#fbf3e4;border-color:#eedcb8}
+  .dh{font-weight:700;font-size:15px;margin-bottom:6px;display:flex;flex-wrap:wrap;align-items:baseline;gap:7px}
+  .dh .dt{color:var(--accent)} .day.fly .dh .dt{color:var(--sea)} .day.stop .dh .dt{color:var(--warn)}
+  .pill{font-size:11px;color:#fff;background:var(--accent);border-radius:6px;padding:1px 7px;white-space:nowrap}
+  .pill.sea{background:var(--sea)} .pill.ok{background:var(--ok)} .pill.warn{background:var(--warn)} .pill.gray{background:#999}
+  ul{margin:4px 0 2px;padding-left:18px} li{margin:3px 0;font-size:14px}
+  .tip{font-size:12.5px;color:var(--mute);margin-top:5px;border-top:1px dashed var(--line);padding-top:5px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:11px}
+  .pc{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:520px){.pc{grid-template-columns:1fr}}
+  .pc h4{margin:0 0 4px;font-size:13.5px}
+  .pc ul{margin:0} .pc li{font-size:13px}
+  a{color:var(--accent)}
+  .foot{font-size:12.5px;color:var(--mute);margin-top:22px;border-top:1px dashed var(--line);padding-top:10px}
+  details.seat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin-bottom:8px}
+  details.seat summary{cursor:pointer;font-size:14px;padding:4px 0}
+  details.seat summary small{color:var(--mute);font-weight:400;margin-left:6px}
+  table.seat{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px;min-width:520px}
+  table.seat th,table.seat td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  table.seat th{color:var(--mute);font-weight:600;font-size:11.5px}
+  table.seat td.t{font-weight:700;font-variant-numeric:tabular-nums}
+  table.seat td.n{text-align:center;font-variant-numeric:tabular-nums}
+  table.seat td.m{color:var(--mute)}
+  table.seat i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  table.wx{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:560px}
+  .wx th,.wx td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+  .wx th{background:#f3eee3;font-weight:700}
+  .wx tr:last-child td{border-bottom:none}
+  .grp{margin-bottom:10px} .grp b{display:block;font-size:13.5px;margin-bottom:3px}
+  .grp span{display:inline-block;font-size:12.5px;background:#f3eee3;border-radius:6px;padding:1px 7px;margin:2px 3px 2px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🇮🇩 발리·롬복 남자넷 · 세 가지 길</h1>
+  <p class="sub">11/24(화) 출발 ~ 12/4(금) 인천 도착 · 대한항공 3명(11/24 둘 · 11/25 하나) + 아시아나 1명(자카르타 거쳐) · 발리 9박</p>
+
+  <div class="bar">🧭 <b>어떻게 보나요</b> — 위에서 길을 하나 고르면 ① 달력에 비행기가 <b>색깔 줄</b>로 한 줄씩 뜨고 ② 지도에 하늘길·발리 동선·롬복 동선이 번호로 찍히고 ③ 아래에 하루하루 일정이 나옵니다. <b>비행편은 예시입니다.</b> 시각은 공개 시간표 기준이고, 직원표 자리는 myIDTravel에서 다시 읽어 아래 표에 넣습니다. 가루다 인천↔발리는 2027년 3월까지 운휴라 셋 다 대한항공입니다.</div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <h2>📊 세 길 한눈에</h2>
+  <div class="scroll"><table class="cmp">
+    <thead><tr><th></th><th>옵션 1 · 우붓 → 롬복 → 짱구</th><th>옵션 2 · 짱구 → 우붓 → 길리·롬복</th><th>옵션 3 · 발리만</th></tr></thead>
+    <tbody>
+      <tr><th>어디서 자나</th><td class="hi">짱구 1 · 우붓 2 · 꾸따 롬복 3 · 짱구 3</td><td>짱구 3 · 우붓 2 · 길리 2 · 꾸따 롬복 2</td><td>짱구 1 · 우붓 3 · 짱구 3 · 울루와뚜 2</td></tr>
+      <tr><th>국내선·배</th><td>비행기 2번(11/27·11/30)</td><td>비행기 2번 + 배 1번(길리→방살)</td><td class="hi">없음</td></tr>
+      <tr><th>귀국날(12/3) 위험</th><td class="hi">낮음 · 전날부터 발리</td><td>국내선이 귀국날 아침 → 확정 좌석 필수, 12시간 여유</td><td class="hi">없음</td></tr>
+      <tr><th>서핑</th><td>그루뿍·슬롱 블라낙 + 짱구 3번</td><td>짱구 2번 + 그루뿍 1번</td><td>짱구 3번 + 울루와뚜 구경</td></tr>
+      <tr><th>스노클·바다</th><td>핑크비치 배 투어(산호·분홍 모래)</td><td class="hi">길리 거북이 스노클 2일 + 밤 파티</td><td>누사페니다 만타(선택) 또는 비치클럽</td></tr>
+      <tr><th>1인 비용(국제선·식비 빼고, 추정)</th><td>약 90~107만 원</td><td>약 93~118만 원</td><td class="hi">약 76~94만 원</td></tr>
+      <tr><th>이런 사람에게</th><td>서핑·화산·핑크비치 골고루, 마지막은 비치클럽으로</td><td>거북이와 수영, 섬 파티, 배 타는 게 괜찮다</td><td>이동 적게, 비 와도 편하게, 롬복은 다음에</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 id="h-cal">📅 달력에 비행기 한 줄씩 <small>줄 색 = 항공사 · 시각은 그 도시 시간 · 🛏 = 그날 밤 자는 곳</small></h2>
+  <div class="scroll calwrap"><div class="cal" id="cal"></div></div>
+  <div class="callist" id="callist"></div>
+  <div class="legend" id="legend"></div>
+
+  <h2>🗺️ 지도 동선 <small>번호 = 가는 순서 · 점 찍으면 설명</small></h2>
+  <div class="mapbtns" id="mapbtns"></div>
+  <div id="map"></div>
+  <div class="mapnote" id="mapnote"></div>
+
+  <h2>📋 매일 일정</h2>
+  <div id="days"></div>
+
+  <h2>⚖️ 이 길의 좋은 점 · 아쉬운 점</h2>
+  <div class="card pc" id="pc"></div>
+
+  <h2>✈️ 항공 시간 · 자리 표 <small>🟢 좋음 🟠 보통 🔴 낮음 · 숫자 = 팔 수 있는 자리(9+ = 9석 이상)</small></h2>
+  <div class="bar" style="font-size:13px">
+    <b>한국 → 발리</b> — 대한항공 KE629 17:40 인천 → 23:55 덴파사르(11/24 둘, 11/25 하나). 아시아나 1명 OZ761 11/24 15:05 → 20:10 자카르타, 자카르타 1박 뒤 11/25 오전 국내선(가루다·바틱·시티링크)으로 발리. 가루다 인천↔발리 직항은 <b>2027년 3월까지 운휴</b>.<br>
+    <b>발리 → 한국</b> — 대한항공 KE634 12/3 23:45 → 12/4 07:45 인천(3명). 아시아나 1명은 12/3 오후 발리 → 자카르타 뒤 OZ762 22:30 → 12/4 07:40 인천.<br>
+    <b>발리 ↔ 롬복</b> — 직항은 윙스에어(프로펠러, 50분)·트랜스누사뿐. 직원표가 안 될 가능성이 커서 편도 5.6~7.6만 원에 <b>그냥 사는 걸</b> 권해요. 특히 귀국날 아침 편은 확정 좌석으로.
+  </div>
+  <div class="card" style="font-size:13px">좌석 실측 표는 myIDTravel 재로그인 뒤 넣습니다(인천↔발리 대한항공 11/24·25·12/3, 자카르타→발리 11/25, 발리→자카르타 12/3, 발리↔롬복).</div>
+
+  <h2>🌤️ 날씨 <small>지난 10년 같은 날짜(11/24~12/3) 실제 기록 평균 · 우기 시작</small></h2>
+  <div class="scroll"><table class="wx">
+    <thead><tr><th>곳</th><th>낮 최고</th><th>밤 최저</th><th>센 비(10mm+) 날</th><th>바다 물</th><th>파도</th><th>한 줄</th></tr></thead>
+    <tbody>
+      <tr><td>짱구</td><td>29°</td><td>24°</td><td>35%</td><td>30°</td><td>1.3m</td><td>아침 서핑, 오후 소나기 뒤 비치클럽</td></tr>
+      <tr><td>우붓</td><td>29°</td><td>23°</td><td>53%</td><td>–</td><td>–</td><td>비가 가장 잦음. 폭포·사원은 오전</td></tr>
+      <tr><td>바뚜르 화산 아래</td><td>24°</td><td>18°</td><td>33%</td><td>–</td><td>–</td><td>정상 새벽 10°대, 바람막이</td></tr>
+      <tr><td>꾸따 롬복</td><td>30°</td><td>25°</td><td>35%</td><td>30°</td><td>1.4m</td><td>서핑은 아침, 바람 오후</td></tr>
+      <tr><td>길리 트라왕안</td><td>30°</td><td>25°</td><td>45%</td><td>30°</td><td>0.7m</td><td>파도 잔잔해 스노클 좋음</td></tr>
+      <tr><td>스나루(린자니 입구)</td><td>26°</td><td>22°</td><td>42%</td><td>–</td><td>–</td><td>구름 잦아 일출 보장 없음</td></tr>
+    </tbody>
+  </table></div>
+  <div class="card" style="font-size:13px;margin-top:10px">
+    🌧️ <b>거의 매일 한 번은 비가 와요.</b> 보통 오후·저녁 소나기. 바다·산은 오전에, 오후는 비치클럽·마사지·카페.<br>
+    🌊 바닷물 30°라 웻슈트 필요 없음. 래시가드만. 길리 섬 사이 물살은 세서 헤엄쳐 건너지 않기(2018년 한국인 사고).<br>
+    🏍️ <b>오토바이는 타지 마세요.</b> 한국 면허·국제면허가 인도네시아에서 인정 안 됨(총영사관 공지). 사고 나면 보험도 안 나와요. 기사 딸린 차(하루 60만~80만 루피아) + 그랩 뒷자리.<br>
+    🔄 출발 5일 전(11/19쯤) 예보를 다시 보고, 폭우 날은 공항 가는 길에 3시간 여유.
+  </div>
+
+  <h2>📝 미리 알아둘 것 <small>조사에서 나온 실제 규칙</small></h2>
+  <div class="card" style="font-size:13.5px">
+    <div class="grp"><b>입국</b>
+      <span>도착비자 50만 루피아(약 3.8만 원), 온라인 e-VOA로 미리(인상 예고 75만~100만)</span><span>All Indonesia 입국 카드(무료, 도착 72시간 전 온라인)</span><span>발리 관광세 15만 루피아, 자카르타 거쳐 오는 1명도 냄</span><span>여권 6개월</span>
+    </div>
+    <div class="grp"><b>돈·통신</b>
+      <span>환전은 초록 PVA Berizin 스티커 환전소만</span><span>길리·롬복은 현금 넉넉히</span><span>eSIM 10일 무제한 약 35달러 또는 공항 텔콤셀 유심</span>
+    </div>
+    <div class="grp"><b>건강·안전</b>
+      <span>생수만, 양치도 생수(발리 배탈)</span><span>모기약(뎅기), 개·원숭이에 물리면 바로 병원(광견병)</span><span>아락(야자술)·싼 칵테일 금지(메탄올), 빈탕 병맥주</span><span>마약은 사형까지, 길리 버섯 절대 금지</span><span>롬복·길리는 이슬람 지역, 마을에서 수영복 금지</span>
+    </div>
+    <div class="grp"><b>롬복</b>
+      <span>린자니 정상 2~3일은 일정상 무리 → 폭포·언덕으로</span><span>쾌속선은 11월 파도로 가끔 결항, 귀국 전날·당일은 배 금지</span><span>윙스에어 부치는 짐 10kg, 서프보드는 현지 대여</span>
+    </div>
+  </div>
+
+  <h2>🗓️ 언제까지 무엇을 예약하나</h2>
+  <div class="card" style="font-size:13.5px"><ul>
+    <li><b>지금 바로</b> — e-VOA 넷 다, 발리 관광세 온라인, 길(옵션) 결정, 아시아나 OZ761·762와 자카르타→발리 자리 사내·myIDTravel 확인.</li>
+    <li><b>11/13까지</b> — 빌라 3곳(짱구·우붓·롬복) 예약, 발리↔롬복 국내선 구매(확정 좌석), 비치클럽(라 브리사 낮 자리는 하루 전 온라인).</li>
+    <li><b>11/17까지</b> — 바뚜르 일출 투어, 래프팅(소벡 1+1), 서핑 레슨 4인 단체 왓츠앱, 핑크비치 배, 길리 스노클 배(옵션 2), 기사 차 예약.</li>
+    <li><b>11/19</b> — 예보 다시 보기, 자리 색 다시 조회. <b>11/23</b> — All Indonesia 입국 카드 제출, 오프라인 지도.</li>
+  </ul></div>
+
+  <div class="foot">
+    비행편 시각은 2026-11-10 공개 시간표(AeroRoutes·flight-status) 기준이고 <b>어느 편을 탈지는 아직 정한 게 아닙니다</b>(예시). 직원표 자리는 myIDTravel 재로그인 뒤 읽어 표에 넣습니다. 식당·카페·바·액티비티는 <b>구글 4.5점·후기 100개 이상 170곳만</b>(255곳 중) 넣었고, 유명해도 기준 미달인 곳(뜨갈랄랑 논 4.4, 캄푸한 리지 4.3, 께짝 공연장 4.4, The Lawn 4.3)은 뺐습니다. 영업시간은 11/10 기준이라 가기 전 확인. 숙소는 에어비앤비·부킹 실가(세금 포함 총액), 이동·액티비티 값은 공식 사이트 또는 추정으로 표시했습니다. 길리 볼거리는 기준 넘는 곳이 없어 스노클 업체만 넣었습니다.
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var AIR={KE:{n:'대한항공',c:'#2f7fc1'},OZ:{n:'아시아나',c:'#b5283b'},GA:{n:'가루다·바틱 국내선',c:'#0d7a6e'},IW:{n:'윙스에어',c:'#e07a1f'}};
+var AP={ICN:{n:'인천',lat:37.4602,lng:126.4407},DPS:{n:'발리 덴파사르',lat:-8.7482,lng:115.1672},CGK:{n:'자카르타',lat:-6.1256,lng:106.6559},LOP:{n:'롬복',lat:-8.7573,lng:116.2767}};
+var WEEKS=[['11/23','11/24','11/25','11/26','11/27','11/28','11/29'],['11/30','12/01','12/02','12/03','12/04','12/05','12/06']];
+var TRIP=['11/24','11/25','11/26','11/27','11/28','11/29','11/30','12/01','12/02','12/03','12/04'];
+var WD={'11/23':'월','11/24':'화','11/25':'수','11/26':'목','11/27':'금','11/28':'토','11/29':'일','11/30':'월','12/01':'화','12/02':'수','12/03':'목','12/04':'금','12/05':'토','12/06':'일'};
+
+var INTL=[
+  {day:'11/24',al:'OZ',dep:'15:05',f:'ICN',t:'CGK',ad:'11/24',arr:'20:10',no:'OZ761 · 1명',load:'사내 확인'},
+  {day:'11/24',al:'KE',dep:'17:40',f:'ICN',t:'DPS',ad:'11/24',arr:'23:55',no:'KE629 · 2명',load:'자리 표 아래'},
+  {day:'11/25',al:'GA',dep:'오전',f:'CGK',t:'DPS',ad:'11/25',arr:'낮',no:'국내선 · 1명',load:'자리 표 아래'},
+  {day:'11/25',al:'KE',dep:'17:40',f:'ICN',t:'DPS',ad:'11/25',arr:'23:55',no:'KE629 · 1명',load:'자리 표 아래'},
+  {day:'12/03',al:'GA',dep:'오후',f:'DPS',t:'CGK',ad:'12/03',arr:'저녁',no:'국내선 · 1명',load:'자리 표 아래'},
+  {day:'12/03',al:'OZ',dep:'22:30',f:'CGK',t:'ICN',ad:'12/04',arr:'07:40',no:'OZ762 · 1명',load:'사내 확인'},
+  {day:'12/03',al:'KE',dep:'23:45',f:'DPS',t:'ICN',ad:'12/04',arr:'07:45',no:'KE634 · 3명',load:'자리 표 아래'}
+];
+var SKY=[['ICN','DPS','KE'],['ICN','CGK','OZ'],['CGK','DPS','GA'],['DPS','LOP','IW'],['LOP','DPS','IW'],['DPS','ICN','KE'],['DPS','CGK','GA'],['CGK','ICN','OZ']];
+var SKY_NOLOMBOK=[['ICN','DPS','KE'],['ICN','CGK','OZ'],['CGK','DPS','GA'],['DPS','ICN','KE'],['DPS','CGK','GA'],['CGK','ICN','OZ']];
+
+var C={cgu:'#c96f3f',ubd:'#2e8b57',sth:'#3d7a8c',kta:'#d4a017',gili:'#2c6fb3',sen:'#7a4fa3'};
+var ZONE={cgu:'짱구·스미냑',ubd:'우붓·화산',sth:'울루와뚜·남부',kta:'꾸따 롬복',gili:'길리',sen:'롬복 북쪽'};
+function P(day,name,lat,lng,memo,z){return {day:day,name:name,lat:lat,lng:lng,memo:memo,z:z};}
+function D(d,t,pills,items,tip,cls){return {d:d,t:t,pills:pills||[],items:items,tip:tip||'',cls:cls||''};}
+
+var DAY_OUT=D('11/24 화','출발 · 밤에 발리 도착',[['비행','sea']],[
+  '<b>15:05 OZ761 인천 → 20:10 자카르타</b>(아시아나 1명). 공항 호텔 1박, 내일 오전 국내선으로 발리.',
+  '<b>17:40 KE629 인천 → 23:55 발리</b>(대한항공 2명). 공항 택시(30만~40만 루피아) 또는 미리 부른 기사 차로 숙소, 새벽 1시쯤 도착.',
+  '대한항공 1명은 내일 같은 편.'
+],'e-VOA·발리 관광세·All Indonesia 입국 카드는 미리 온라인으로. 공항 환전은 조금만, 유심은 공항 텔콤셀.','fly');
+var DAY_HOME=D('12/04 금','인천 도착',[['귀국','sea']],['07:40 아시아나 1명 · 07:45 대한항공 3명 인천 도착.'],'','fly');
+
+// ===== 옵션 1 · 우붓 → 롬복 → 짱구 =====
+var OPT1={
+  name:'옵션 1',tag:'우붓 → 롬복 → 짱구',sub:'추천 · 귀국 전날부터 발리',
+  summary:'<b>우붓 2박 → 꾸따 롬복 3박 → 짱구 3박.</b> 화산·폭포·사원 → 그루뿍 서핑·핑크비치 → 짱구 서핑·비치클럽으로 마무리. 11/30에 발리로 돌아와 귀국날(12/3) 국내선이 없어 가장 안전. 1인 약 90~107만 원(국제선·식비 빼고, 추정).',
+  sleep:{'11/24':'기내→짱구(2)·자카르타(1)','11/25':'우붓 빌라','11/26':'우붓 빌라','11/27':'꾸따 롬복 빌라','11/28':'꾸따 롬복','11/29':'꾸따 롬복','11/30':'짱구 빌라','12/01':'짱구 빌라','12/02':'짱구 빌라','12/03':'기내','12/04':'집'},
+  flights:INTL.concat([
+    {day:'11/27',al:'IW',dep:'15:40',f:'DPS',t:'LOP',ad:'11/27',arr:'16:30',no:'윙스에어 예시 · 4명',load:'일반 구매'},
+    {day:'11/30',al:'IW',dep:'10:35',f:'LOP',t:'DPS',ad:'11/30',arr:'11:25',no:'윙스에어 예시 · 4명',load:'일반 구매'}
+  ]),sky:SKY,
+  bali:[
+    P('11/24','공항 → 짱구 빌라(첫밤)',-8.6594,115.1308,'KE629 23:55 도착. 기사 차 50분. 2명만 자는 밤','cgu'),
+    P('11/25','바투볼롱 서핑 레슨 (Elsewhere Surf Camp)',-8.6507,115.1337,'5.0/2,372. 4인 단체 35만/인. 07시 파도가 매끈','cgu'),
+    P('11/25','Revolver 브런치 → 우붓 이동',-8.6533,115.1356,'4.7/3,032. 짱구→우붓 기사 차 1~2시간','cgu'),
+    P('11/25','우붓 빌라 (BASIN 또는 Villa Jocelyne)',-8.5100,115.2600,'2침실 1인 1박 2.3만 원 / 3침실 5.5만 원. 저녁 This Is Bali 4.9/19,704 → No Más 4.5/1,286','ubd'),
+    P('11/26','Tukad Cepung 폭포 (빛줄기 9~10시)',-8.4410,115.3868,'4.6/5,663. 동굴 안으로 빛. 수영 가능','ubd'),
+    P('11/26','띠르따 음뿔 샘물 목욕 → 구눙 카위',-8.4157,115.3153,'4.6/31,394 · 4.7/1,062. 사롱 빌려 입고 샘물 의식','ubd'),
+    P('11/26','Nasi Ayam Ibu Mangku 점심 → Alas Harum 그네·짚라인',-8.4398,115.2807,'닭밥 4.6/5,455. Alas Harum 4.6/24,878 입장 7만, 짚라인 묶음 약 41만','ubd'),
+    P('11/26','FERRO Grill 저녁 → Night Rooster',-8.5123,115.2582,'4.8/2,018 그릴 고기 → 칵테일 바 4.7/358. 특별한 저녁은 Locavore NXT 4.7/890(예약)','ubd'),
+    P('11/27','바뚜르 화산 일출 트레킹 (02:00 픽업)',-8.2420,115.3750,'Mount Batur Sunrise Trekking 4.8/909. 1인 65만~75만. 정상 10°대, 바람막이. 10시 복귀','ubd'),
+    P('11/27','우붓 → 공항 → 15:40 윙스에어 롬복',-8.7482,115.1672,'12:30 출발(1.5시간 + 수속). 부치는 짐 10kg','sth'),
+    P('11/30','롬복 → 11:25 발리 → 짱구 빌라 3박',-8.6600,115.1400,'Casa Noah 3침실(1인 1박 2.8만 원) 또는 New Contemporary 3bd','cgu'),
+    P('11/30','Santanera 저녁 → Black Sand Brewery',-8.6519,115.1311,'4.8/3,513 남미 숯불 고기 → 수제 맥주 4.7/3,455','cgu'),
+    P('12/01','아침 서핑 → Milk & Madu 브런치',-8.6608,115.1457,'보드 대여 시간당 5만~10만. 4.7/8,934','cgu'),
+    P('12/01','La Brisa 13~16시 (미니멈 없음) → 노을',-8.6542,115.1250,'4.6/23,546 나무 배 비치클럽. 하루 전 온라인 예약. 저녁 Smoke Bali 4.7/3,212 → Gimme Shelter 4.7/478','cgu'),
+    P('12/02','아융강 래프팅 (소벡 1+1) 또는 Gorilla ATV',-8.4677,115.2489,'래프팅 4.9/1,925 약 60만/인 · ATV 4.9/7,241 39.5만~. 짱구에서 픽업 1시간','ubd'),
+    P('12/02','FINNS 또는 Atlas 비치클럽 → MUDA 저녁 → Miss Fish',-8.6668,115.1394,'FINNS 4.7/49,696 입장 무료 · Atlas 4.7/17,769 데이패스 30만. MUDA 4.9/3,336. Miss Fish 4.7/2,159(수 영업)','cgu'),
+    P('12/03','체크아웃 → 울루와뚜 사원 → Single Fin 점심',-8.8291,115.0849,'사원 4.6/53,501. Single Fin 4.6/14,352 절벽 위 서퍼 바. Suluban 동굴 해변 4.6/2,195','sth'),
+    P('12/03','El Kabron 노을 → 공항 20:30 → 23:45 KE634',-8.8020,115.1175,'4.7/14,825 절벽 위 스페인 바. 아시아나 1명은 오후 자카르타행 먼저','sth')
+  ],
+  lombok:[
+    P('11/27','롬복 공항 16:30 → 꾸따 롬복 빌라 3박',-8.8900,116.2770,'Villa MALI(1인 1박 3.5만 원) 또는 Dos Palmas 4침실(5.5만 원). 공항→꾸따 25~40분','kta'),
+    P('11/27','The Shack Lombok 저녁 → PULO 바',-8.8913,116.2770,'4.9/5,929 이탈리안·바 → PULO 5.0/1,533','kta'),
+    P('11/28','그루뿍 보트 서핑 (Insider Surf 또는 Turmuzi)',-8.9109,116.3440,'5.0/315 · 5.0/274. 2시간 50만~55만(배·장비 포함). 아침 파도','kta'),
+    P('11/28','Kenza 브런치 → 낮잠 → 슬롱 블라낙 (Aqia Surf)',-8.8723,116.1619,'Kenza 4.6/3,922. Aqia Surf 5.0/971 초보 모래 해변 레슨 약 40만. Laut Biru 4.5/1,101 해변 점심','kta'),
+    P('11/28','Bukit Merese 노을 → Cantina Mexicana',-8.9139,116.3190,'언덕 4.7/9,065 입장 무료. 멕시칸·칵테일 4.8/5,277 → The Bus Bar 4.6/212','kta'),
+    P('11/29','핑크비치 배 투어 (땅중루아르 출발)',-8.7780,116.5171,'Open trip pink beach 4.6/149. 기사 차 1.5시간 + 배. 4명 합쳐 120만~180만(추정). 스노클 포함','kta'),
+    P('11/29','Ramen Otaku 또는 El Bazar 저녁 → KRNK',-8.8903,116.2766,'라멘 4.9/4,335 · 중동식 4.7/3,525(16~23시) → 바 4.7/3,893','kta'),
+    P('11/30','만달리카 서킷 구경 → Kult 브런치 → 공항',-8.8952,116.3042,'모토GP 서킷 4.7/4,941 → Kult Cafe 4.9/1,830 → 10:35 윙스에어(공항 25분)','kta')
+  ],
+  days:[DAY_OUT,
+    D('11/25 수','짱구 아침 서핑 → 우붓',[['셋 합류','warn']],[
+      '07:00 먼저 온 2명 <b>바투볼롱 서핑 레슨</b>(Elsewhere 5.0/2,372, 2시간). 아시아나 1명은 오전 국내선으로 발리 도착 → 짱구 합류.',
+      '10:30 <b>Revolver</b>(4.7/3,032) 브런치 → 12:00 기사 차로 <b>우붓</b>(1~2시간). 빌라 체크인, 수영장.',
+      '16:00 우붓 시내 산책(몽키포레스트 4.5/60,173은 소지품 조심) → 19:00 <b>This Is Bali</b>(4.9/19,704) 발리 요리 → <b>No Más</b>(4.5/1,286) 칵테일.',
+      '23:55 대한항공 1명 발리 도착 → 기사 차로 우붓(새벽 1시 반). 빌라 열쇠 미리.'
+    ],'첫날은 가볍게. 기사 차는 하루 60만~80만 루피아(약 4.5만~6만 원), 4명이 나누면 1인 1.5만 원.','stop'),
+    D('11/26 목','폭포 → 샘물 사원 → 그네·짚라인',[['우붓','ok']],[
+      '08:00 <b>Tukad Cepung 폭포</b>(4.6/5,663) 빛줄기 9~10시 → 10:30 <b>띠르따 음뿔</b>(4.6/31,394) 샘물 목욕 의식 → <b>구눙 카위</b>(4.7/1,062) 바위 왕릉.',
+      '13:00 <b>Nasi Ayam Ibu Mangku</b>(4.6/5,455) 닭밥 → 14:30 <b>Alas Harum</b>(4.6/24,878) 논 위 그네·300m 짚라인(90kg 제한).',
+      '19:00 <b>FERRO Grill</b>(4.8/2,018) 고기 → <b>Night Rooster</b>(4.7/358) 칵테일. 내일 새벽 2시 기상이라 자정 전 취침.'
+    ],'오후 소나기가 잦으니 사원·폭포는 오전. 뜨갈랄랑 논(4.4)은 규칙 미달이라 Alas Harum 안에서 같은 논을 봐요.'),
+    D('11/27 금','바뚜르 일출 → 롬복',[['화산','warn'],['비행 50분','sea']],[
+      '02:00 픽업 <b>바뚜르 화산 일출 트레킹</b>(4.8/909, 1인 65만~75만). 2시간 오르막, 정상 10°대. 06:00 일출, 10:00 복귀.',
+      '10:30 빌라 샤워·낮잠·체크아웃 → 12:30 기사 차로 공항(1.5시간).',
+      '<b>15:40 윙스에어 발리 → 16:30 롬복</b>(예시, 편도 약 5.6만 원, 짐 10kg). 공항→꾸따 롬복 25~40분.',
+      '19:00 <b>The Shack Lombok</b>(4.9/5,929) → <b>PULO</b>(5.0/1,533) 한잔.'
+    ],'화산은 비 오면 일출이 안 보여요. 그래도 새벽 등산 자체가 재미. 체력 아끼려면 래프팅은 12/2로.'),
+    D('11/28 토','그루뿍 서핑 → 슬롱 블라낙 → 노을 언덕',[['꾸따 롬복','ok']],[
+      '07:00 <b>그루뿍 보트 서핑</b>(Insider Surf 5.0/315 또는 Turmuzi 5.0/274) 2시간 50만~55만. 배 타고 나가는 만 안쪽 파도.',
+      '10:30 <b>Kenza</b>(4.6/3,922) 브런치 → 낮잠.',
+      '15:00 <b>슬롱 블라낙</b>(4.5/5,485) 초보 모래 해변, <b>Aqia Surf</b>(5.0/971) 2차 레슨 또는 수영 → <b>Laut Biru</b>(4.5/1,101).',
+      '17:30 <b>Bukit Merese</b>(4.7/9,065) 노을 → 19:30 <b>Cantina Mexicana</b>(4.8/5,277) → <b>The Bus Bar</b>(4.6/212).'
+    ],'11월 말 롬복 파도는 작고 바람은 오후에 세져요. 서핑은 오전 두 번이 정석.'),
+    D('11/29 일','핑크비치 배 투어',[['바다','sea']],[
+      '07:00 기사 차 1.5시간 → 땅중루아르 → <b>핑크비치 배 투어</b>(4.6/149) 핑크비치·스노클·모래섬 3~4시간. 4명 합쳐 120만~180만(추정).',
+      '15:00 꾸따 복귀 → <b>MILK</b>(4.5/1,702) 커피 → 빌라 수영장.',
+      '19:00 <b>Ramen Otaku</b>(4.9/4,335) 또는 <b>El Bazar</b>(4.7/3,525) → <b>KRNK</b>(4.7/3,893).'
+    ],'핑크비치 해변 자체는 4.2라 뺐지만 배 투어 업체가 4.6이라 넣었어요. 물·모자·래시가드.'),
+    D('11/30 월','롬복 → 짱구',[['비행 50분','sea']],[
+      '07:30 <b>만달리카 서킷</b>(4.7/4,941) 바깥 구경 → 08:30 <b>Kult Cafe</b>(4.9/1,830) 브런치 → 체크아웃.',
+      '<b>10:35 윙스에어 롬복 → 11:25 발리</b>(예시) → 기사 차 1~1.5시간 짱구 빌라(Casa Noah 3침실).',
+      '15:00 빌라 수영장 → 18:30 <b>Santanera</b>(4.8/3,513) 숯불 고기 → <b>Black Sand Brewery</b>(4.7/3,455).'
+    ],'롬복→발리 편이 늦어도 귀국은 사흘 뒤라 걱정 없음.'),
+    D('12/01 화','서핑 → 비치클럽 낮 자리',[['짱구','ok']],[
+      '07:00 바투볼롱 <b>서핑</b>(보드 대여 시간당 5만~10만, 또는 레슨 2차) → <b>Milk & Madu</b>(4.7/8,934) 브런치.',
+      '13:00 <b>La Brisa</b>(4.6/23,546) 13~16시 미니멈 없음(하루 전 온라인 예약) → 노을까지.',
+      '19:30 <b>Smoke Bali</b>(4.7/3,212) 바비큐 → <b>Gimme Shelter</b>(4.7/478) 록 펍(새벽 3시까지).'
+    ],'핀스 파티베드는 4인 300만 루피아(약 23만 원)부터라 비쌈. 바 자리는 공짜.'),
+    D('12/02 수','래프팅 → 비치클럽 → 마지막 밤',[['짱구','ok']],[
+      '08:00 픽업 <b>아융강 래프팅</b>(소벡 1+1, 약 60만/인, 4.9/1,925) 또는 <b>Gorilla ATV</b>(4.9/7,241). 점심 포함, 14시 복귀.',
+      '15:00 <b>FINNS</b>(4.7/49,696, 입장 무료) 또는 <b>Atlas</b>(4.7/17,769, 데이패스 30만) 수영장·DJ·노을.',
+      '20:00 <b>MUDA</b>(4.9/3,336) 저녁 → <b>Miss Fish</b>(4.7/2,159) → 2차 <b>Vault</b>(4.6/2,209, 수 영업).'
+    ],'내일 비행이 밤 11시 45분이라 마지막 밤은 늦게까지 OK.'),
+    D('12/03 목','울루와뚜 → 밤 비행',[['비행','sea']],[
+      '11:00 체크아웃(짐은 차에) → 12:30 <b>Single Fin</b>(4.6/14,352) 절벽 위 점심 → <b>Suluban 동굴 해변</b>(4.6/2,195).',
+      '아시아나 1명은 15시쯤 공항 → 발리 → 자카르타 국내선 → <b>22:30 OZ762 → 12/4 07:40 인천</b>.',
+      '16:30 <b>울루와뚜 사원</b>(4.6/53,501, 원숭이 조심) → 18:00 <b>El Kabron</b>(4.7/14,825) 노을·저녁 → 20:30 공항(30분).',
+      '<b>23:45 KE634 발리 → 12/4 07:45 인천</b>(대한항공 3명).'
+    ],'귀국날 국내선·배가 없어 가장 안전한 길. 께짝 댄스 공연장은 4.4라 뺐지만 보고 싶으면 사원 옆 18시.','fly'),
+    DAY_HOME],
+  pros:['귀국날 섬 이동이 없어 가장 안전','화산 일출·폭포·사원 → 서핑·핑크비치 → 비치클럽, 매일 다른 재미','서핑을 그루뿍·슬롱 블라낙·바투볼롱에서 세 번 이상','마지막 3박이 짱구라 밤 놀이가 풍성'],
+  cons:['국내선 2번(1인 왕복 약 13만 원, 직원표 안 될 가능성)','바뚜르 새벽 등산 다음날 바로 이동이라 피곤','길리 거북이 스노클이 빠짐','우붓은 열흘 중 닷새 센 비']
+};
+
+// ===== 옵션 2 · 짱구 → 우붓 → 길리·롬복 =====
+var OPT2={
+  name:'옵션 2',tag:'짱구 → 우붓 → 길리·롬복',sub:'거북이 스노클 + 섬 파티',
+  summary:'<b>짱구 3박 → 우붓 2박 → 길리 트라왕안 2박 → 꾸따 롬복 2박.</b> 먼저 온 사람들이 짱구에서 편하게 시작하고, 길리에서 거북이 스노클·레게 파티, 꾸따 롬복에서 서핑으로 끝. 단 <b>귀국날 아침 롬복→발리 국내선</b>이 끼어 확정 좌석 필수. 1인 약 93~118만 원(추정).',
+  sleep:{'11/24':'기내→짱구(2)·자카르타(1)','11/25':'짱구 빌라','11/26':'짱구 빌라','11/27':'우붓 빌라','11/28':'우붓 빌라','11/29':'길리 T 빌라','11/30':'길리 T 빌라','12/01':'꾸따 롬복 빌라','12/02':'꾸따 롬복 빌라','12/03':'기내','12/04':'집'},
+  flights:INTL.concat([
+    {day:'11/29',al:'IW',dep:'08:45',f:'DPS',t:'LOP',ad:'11/29',arr:'09:35',no:'윙스에어 예시 · 4명',load:'일반 구매'},
+    {day:'12/03',al:'IW',dep:'07:45',f:'LOP',t:'DPS',ad:'12/03',arr:'08:35',no:'윙스에어 예시 · 확정 좌석',load:'일반 구매'}
+  ]),sky:SKY,
+  bali:[
+    P('11/24','공항 → 짱구 빌라 3박',-8.6594,115.1308,'New Contemporary 3bd(1인 1박 4.2만 원) 또는 Casa Noah','cgu'),
+    P('11/25','바투볼롱 서핑 레슨 → Revolver 브런치',-8.6507,115.1337,'Elsewhere 5.0/2,372 · Revolver 4.7/3,032','cgu'),
+    P('11/25','따나롯 사원 노을 → WOODS 저녁',-8.6212,115.0868,'따나롯 4.7/103,420 차 30분. WOODS Pererenan 4.7/3,914 숯불','cgu'),
+    P('11/26','에코비치 서핑 구경·Canggu Surf School → Atlas 데이패스',-8.6537,115.1238,'4.9/252. Atlas 4.7/17,769 30만. 저녁 Pizza Fabbrica 4.7/4,896 → Black Sand Brewery','cgu'),
+    P('11/27','짱구 → 우붓 (Real Bali Swing 들러서)',-8.4906,115.2400,'Real Bali Swing 4.6/15,248 봉까사 정글 그네. 우붓 빌라 BASIN/Jocelyne','ubd'),
+    P('11/27','띠르따 음뿔 → Warung Pondok Madu 폭립',-8.4157,115.3153,'4.6/31,394 · 폭립 4.6/5,588. 바 No Más','ubd'),
+    P('11/28','바뚜르 일출 (02:00) → 낮잠 → 아융강 래프팅',-8.2420,115.3750,'4.8/909 · 래프팅 4.9/1,925. 둘 다 하면 힘든 날. 저녁 Locavore NXT 4.7/890(토 영업, 예약) 또는 Donna 4.8/9,442','ubd'),
+    P('11/29','우붓 → 공항 → 08:45 윙스에어 롬복',-8.7482,115.1672,'05:30 출발. 롬복공항 → 방살 항구 1.5~2시간 → 배 15~45분 → 길리 T','sth'),
+    P('12/03','08:35 발리 도착 → 울루와뚜 → 밤 비행',-8.8291,115.0849,'짐은 차에. Single Fin 점심 · 사원 · El Kabron 노을 → 23:45 KE634','sth')
+  ],
+  lombok:[
+    P('11/29','길리 트라왕안 빌라 2박',-8.3520,116.0400,'Modern 2BR Villa(1인 1박 3.7만 원) 또는 Villa Naka. 섬엔 차 없음, 자전거·마차','gili'),
+    P('11/29','Jiggy Beach Club 점심 → 자전거 섬 한 바퀴 → The Exile 노을',-8.3496,116.0433,'4.9/8,331 · 노을 바 4.5/959. 저녁 Regina Pizzeria 4.7/4,093 → Sama-Sama 레게 4.5/2,716','gili'),
+    P('11/30','3섬 스노클 (Utopia Catamaran 또는 GILINESIA 전세)',-8.3516,116.0441,'4.9/1,301 · 5.0/436. 거북이 포인트·메노 수중 조각상. 체험 다이빙 Manta Dive 4.8/2,527 135만','gili'),
+    P('11/30','Coffee & Thyme → Jali Kitchen → La Cala → The Shack Gili',-8.3500,116.0407,'4.7/2,294 · 4.6/3,169 · 4.7/4,916 · 4.9/2,686. 월요일 파티는 가서 물어보기','gili'),
+    P('12/01','길리 → 방살 (배 아침) → 꾸따 롬복 빌라 2박',-8.8900,116.2770,'배 15~45분 + 차 2~2.5시간. Villa MALI. 저녁 The Shack Lombok 4.9/5,929 → PULO 5.0','kta'),
+    P('12/02','그루뿍 보트 서핑 → 슬롱 블라낙 → Bukit Merese 노을',-8.9109,116.3440,'Insider Surf 5.0/315 · Aqia Surf 5.0/971 · 언덕 4.7/9,065. 저녁 Cantina Mexicana 4.8/5,277 → Bus Bar','kta'),
+    P('12/03','05:30 출발 → 07:45 윙스에어 발리',-8.7573,116.2767,'공항 25분. 확정 좌석으로 구매. 트랜스누사 08:25도 예비','kta')
+  ],
+  days:[DAY_OUT,
+    D('11/25 수','짱구 서핑 → 따나롯 노을',[['셋 합류','warn']],[
+      '07:00 <b>바투볼롱 서핑 레슨</b>(Elsewhere 5.0/2,372) → 10:30 <b>Revolver</b>(4.7/3,032) 브런치. 아시아나 1명 오전 국내선으로 합류.',
+      '13:00 빌라 수영장·낮잠(소나기 시간) → 16:30 <b>따나롯 사원</b>(4.7/103,420) 바다 위 바위 사원 노을.',
+      '19:30 <b>WOODS Pererenan</b>(4.7/3,914) 숯불 → <b>Mosto</b>(4.7/615) 와인. 23:55 대한항공 1명 도착 → 기사 차 50분 빌라.'
+    ],'','stop'),
+    D('11/26 목','에코비치 → 비치클럽',[['짱구','ok']],[
+      '07:00 <b>에코비치</b>(4.6/604) 중급 파도 구경·<b>Canggu Surf School</b>(4.9/252) 2차 레슨 → <b>TWO FACE</b>(4.8/2,213) 브런치.',
+      '13:00 <b>Atlas</b>(4.7/17,769) 데이패스 30만(웰컴 드링크·수영장) → 노을.',
+      '19:30 <b>Pizza Fabbrica</b>(4.7/4,896) → <b>Black Sand Brewery</b>(4.7/3,455).'
+    ],''),
+    D('11/27 금','정글 그네 → 우붓',[['이동 2시간','gray']],[
+      '09:00 체크아웃 → 10:30 <b>Real Bali Swing</b>(4.6/15,248) 봉까사 정글 그네 → 12:30 우붓 빌라 체크인.',
+      '14:30 <b>띠르따 음뿔</b>(4.6/31,394) 샘물 목욕 → <b>구눙 카위</b>(4.7/1,062).',
+      '19:00 <b>Warung Pondok Madu</b>(4.6/5,588) 폭립 → <b>No Más</b>(4.5/1,286).'
+    ],'내일 새벽 2시 기상.'),
+    D('11/28 토','바뚜르 일출 → 래프팅',[['화산','warn']],[
+      '02:00 픽업 <b>바뚜르 일출 트레킹</b>(4.8/909) → 10:00 복귀 → 낮잠.',
+      '13:30 <b>아융강 래프팅</b>(소벡 1+1, 4.9/1,925) 2시간 → 17:00 복귀.',
+      '19:30 <b>Locavore NXT</b>(4.7/890, 토 영업, 예약 필수) 코스 또는 <b>Donna</b>(4.8/9,442) → <b>Night Rooster</b>(4.7/358).'
+    ],'둘 다 하면 힘든 날. 래프팅을 빼고 쉬어도 돼요. 내일 05:30 출발.'),
+    D('11/29 일','우붓 → 롬복 → 길리 트라왕안',[['비행 50분 + 배','sea']],[
+      '05:30 기사 차로 공항(1시간) → <b>08:45 윙스에어 → 09:35 롬복</b>(예시).',
+      '10:00 차 1.5~2시간 <b>방살 항구</b> → 공용 배 15~45분 → 12:30 <b>길리 트라왕안</b> 빌라(Modern 2BR Villa). 섬엔 차·오토바이 없음, 자전거 하루 5만~7.5만.',
+      '13:30 <b>Jiggy Beach Club</b>(4.9/8,331) 점심 → 자전거 섬 한 바퀴(7km) → <b>The Exile</b>(4.5/959) 노을.',
+      '19:30 <b>Regina Pizzeria</b>(4.7/4,093) → <b>Sama-Sama</b>(4.5/2,716) 레게 라이브.'
+    ],'길리 항구 입장료 1인 2만. 현금 넉넉히(ATM 비쌈). 섬 사이 물살 세서 헤엄쳐 건너지 않기.'),
+    D('11/30 월','길리 3섬 스노클 · 거북이',[['바다','sea']],[
+      '07:30 <b>Coffee & Thyme</b>(4.7/2,294) → 09:00 <b>3섬 스노클</b>(Utopia Catamaran 4.9/1,301 공유 10만~15만, 또는 GILINESIA 5.0/436 4명 전세 70만~120만/척) 거북이·메노 수중 조각상 3~4시간.',
+      '자격증 있는 사람은 <b>Manta Dive</b>(4.8/2,527) 펀다이브 59만~64만, 없는 사람은 체험 135만.',
+      '14:00 <b>Jali Kitchen</b>(4.6/3,169) → <b>La Cala</b>(4.7/4,916) 비치클럽 → 19:30 <b>The Shack Gili</b>(4.9/2,686) → <b>Lava Sports Bar</b>(4.7/572).'
+    ],'길리 볼거리는 평점 기준을 넘는 곳이 없어 바다·바만 넣었어요. 버섯 권유는 절대 거절.'),
+    D('12/01 화','길리 → 꾸따 롬복',[['배 + 차 3시간','gray']],[
+      '08:00 공용 배로 <b>방살</b> → 기사 차 2~2.5시간 → 11:30 <b>꾸따 롬복</b> 빌라(Villa MALI).',
+      '13:00 <b>Kenza</b>(4.6/3,922) 점심 → 15:30 <b>슬롱 블라낙</b>(4.5/5,485) 수영·<b>Aqia Surf</b>(5.0/971) 레슨.',
+      '18:00 <b>Bukit Merese</b>(4.7/9,065) 노을 → <b>The Shack Lombok</b>(4.9/5,929) → <b>PULO</b>(5.0/1,533).'
+    ],'아침 배가 가장 잔잔. 멀미약.'),
+    D('12/02 수','그루뿍 서핑 → 마지막 밤',[['꾸따 롬복','ok']],[
+      '07:00 <b>그루뿍 보트 서핑</b>(Insider Surf 5.0/315) 2시간 → <b>Kult Cafe</b>(4.9/1,830) 브런치.',
+      '13:00 빌라 수영장 → 15:30 <b>만달리카 서킷</b>(4.7/4,941) 구경 → <b>Sade 마을</b>(4.5/11,113) 사삭족 전통 마을.',
+      '19:00 <b>Cantina Mexicana</b>(4.8/5,277) → <b>The Bus Bar</b>(4.6/212). 내일 05:30 출발이라 일찍.'
+    ],''),
+    D('12/03 목','롬복 → 발리 → 울루와뚜 → 밤 비행',[['비행 2번','sea']],[
+      '05:30 체크아웃 → <b>07:45 윙스에어 롬복 → 08:35 발리</b>(확정 좌석, 트랜스누사 08:25 예비). 귀국편까지 15시간 여유.',
+      '10:00 기사 차(짐 보관) → <b>울루와뚜</b> <b>Single Fin</b>(4.6/14,352) 점심 → <b>Suluban 해변</b> → 16:30 <b>울루와뚜 사원</b>(4.6/53,501).',
+      '아시아나 1명 15시 공항 → 자카르타 → <b>22:30 OZ762</b>. 나머지 18:00 <b>El Kabron</b>(4.7/14,825) 노을 → 20:30 공항 → <b>23:45 KE634</b>.'
+    ],'국내선이 결항되면 당일 다른 편(윙스 09:55·10:35, 트랜스누사 11:30)이 있어 23:45까지는 닿아요. 그래도 확정 좌석으로.','fly'),
+    DAY_HOME],
+  pros:['길리 거북이 스노클·수중 조각상·레게 밤, 섬 특유의 놀이','먼저 온 2명이 공항 가까운 짱구에서 편하게 시작','서핑(짱구 2번·그루뿍)과 스노클이 둘 다','길리는 파도 0.7m라 바다가 가장 잔잔'],
+  cons:['귀국날 아침 국내선 → 확정 좌석 필수, 결항 땐 하루 종일 조마조마','배 1번(11월 파도로 가끔 결항·멀미)','이동일이 11/27·29·12/1 세 번','길리 숙소가 조금 비쌈']
+};
+
+// ===== 옵션 3 · 발리만 =====
+var OPT3={
+  name:'옵션 3',tag:'발리만 느긋하게',sub:'국내선·배 없음',
+  summary:'<b>짱구 1박 → 우붓 3박 → 짱구 3박 → 울루와뚜 2박.</b> 롬복을 빼고 비행기·배 없이 차로만. 비 와도 바꾸기 쉽고 가장 싸요(1인 약 76~94만 원, 추정). 롬복 대신 누사페니다 만타 스노클(선택)과 울루와뚜 절벽 바.',
+  sleep:{'11/24':'기내→짱구(2)·자카르타(1)','11/25':'우붓 빌라','11/26':'우붓 빌라','11/27':'우붓 빌라','11/28':'짱구 빌라','11/29':'짱구 빌라','11/30':'짱구 빌라','12/01':'울루와뚜 빌라','12/02':'울루와뚜 빌라','12/03':'기내','12/04':'집'},
+  flights:INTL,sky:SKY_NOLOMBOK,
+  bali:[
+    P('11/24','공항 → 짱구 빌라(첫밤)',-8.6594,115.1308,'KE629 23:55 도착, 2명','cgu'),
+    P('11/25','바투볼롱 서핑 → Revolver → 우붓 빌라 3박',-8.6507,115.1337,'Elsewhere 5.0/2,372. 우붓 Villa Jocelyne 3침실','cgu'),
+    P('11/26','Tukad Cepung → 띠르따 음뿔 → 구눙 카위 → Alas Harum',-8.4157,115.3153,'폭포 4.6 · 사원 4.6 · 왕릉 4.7 · 그네·짚라인 4.6. 저녁 FERRO 4.8 → Night Rooster 4.7','ubd'),
+    P('11/27','바뚜르 일출 → 낮잠 → Tibumana 폭포 수영',-8.2420,115.3750,'4.8/909 · Tibumana 4.6/3,283. 저녁 Locavore NXT 4.7(금 영업, 예약)','ubd'),
+    P('11/28','아융강 래프팅 또는 Gorilla ATV → 짱구 빌라 3박',-8.4677,115.2489,'래프팅 4.9/1,925 · ATV 4.9/7,241. Casa Noah 3침실. 저녁 Santanera 4.8 → Black Sand','cgu'),
+    P('11/29','서핑 2차 → La Brisa 낮 자리 → Smoke Bali',-8.6542,115.1250,'4.6/23,546 13~16시 미니멈 없음. Gimme Shelter 4.7','cgu'),
+    P('11/30','(선택) 누사페니다 만타 스노클 또는 쉬는 날 → FINNS',-8.6668,115.1394,'누사페니다 공유 약 180만 + 보호비 10만(사누르 출발, 배). FINNS 4.7/49,696. MUDA 4.9 저녁','cgu'),
+    P('12/01','따나롯 → 울루와뚜 빌라 2박 → Single Fin',-8.8149,115.0889,'따나롯 4.7/103,420 → 울루와뚜 빌라. Single Fin 4.6/14,352 노을. 저녁 Bukit Cafe 4.5/1,956','sth'),
+    P('12/02','Melasti·Suluban 해변 → Sundays Beach Club → 울루와뚜 사원 노을',-8.8483,115.1632,'4.6/4,538 · 4.6/2,195 · Sundays 4.5/6,248 엘리베이터 해변 클럽 · 사원 4.6/53,501','sth'),
+    P('12/03','Potato Head 또는 KU DE TA → Ling-Ling\'s 저녁 → 공항',-8.6794,115.1499,'스미냑 4.6/24,997 · 4.5/10,120 · Ling-Ling\'s 4.9/9,894. 공항 20분 → 23:45 KE634','cgu')
+  ],
+  lombok:null,
+  days:[DAY_OUT,
+    D('11/25 수','짱구 아침 서핑 → 우붓 3박',[['셋 합류','warn']],[
+      '07:00 <b>바투볼롱 서핑 레슨</b>(Elsewhere 5.0/2,372) → <b>Revolver</b>(4.7/3,032) 브런치. 아시아나 1명 합류.',
+      '12:00 기사 차 → 우붓 빌라(Villa Jocelyne 3침실, 1인 1박 5.5만 원) → 수영장.',
+      '19:00 <b>This Is Bali</b>(4.9/19,704) → <b>No Más</b>(4.5/1,286). 23:55 대한항공 1명 → 기사 차로 우붓.'
+    ],'','stop'),
+    D('11/26 목','폭포 → 샘물 사원 → 그네·짚라인',[['우붓','ok']],[
+      '08:00 <b>Tukad Cepung</b>(4.6/5,663) → 10:30 <b>띠르따 음뿔</b>(4.6/31,394) → <b>구눙 카위</b>(4.7/1,062) → 13:00 <b>Ibu Mangku</b>(4.6/5,455) 닭밥.',
+      '14:30 <b>Alas Harum</b>(4.6/24,878) 그네·짚라인 → 19:00 <b>FERRO Grill</b>(4.8/2,018) → <b>Night Rooster</b>(4.7/358).'
+    ],''),
+    D('11/27 금','바뚜르 일출 → 폭포 수영 → 코스 요리',[['화산','warn']],[
+      '02:00 <b>바뚜르 일출</b>(4.8/909) → 10:00 복귀 낮잠.',
+      '15:00 <b>Tibumana 폭포</b>(4.6/3,283) 수영 → 19:30 <b>Locavore NXT</b>(4.7/890, 예약) 또는 <b>Warung Babi Guling Pande Egi</b>(4.6/8,193) 돼지 통구이.'
+    ],''),
+    D('11/28 토','래프팅 → 짱구 3박',[['이동','gray']],[
+      '08:30 <b>아융강 래프팅</b>(4.9/1,925) 또는 <b>Gorilla ATV</b>(4.9/7,241) → 14:00 짱구 빌라(Casa Noah) 체크인.',
+      '18:30 <b>Santanera</b>(4.8/3,513) → <b>Black Sand Brewery</b>(4.7/3,455).'
+    ],''),
+    D('11/29 일','서핑 → 비치클럽',[['짱구','ok']],[
+      '07:00 서핑 2차(<b>Kima Surf</b> 4.9/873 보드 대여) → <b>Milk & Madu</b>(4.7/8,934).',
+      '13:00 <b>La Brisa</b>(4.6/23,546) 낮 자리 → 19:30 <b>Smoke Bali</b>(4.7/3,212) → <b>Gimme Shelter</b>(4.7/478).'
+    ],''),
+    D('11/30 월','(선택) 누사페니다 만타 → FINNS',[['바다','sea']],[
+      '06:00 사누르 출발 <b>누사페니다 스노클</b>(만타·크리스탈베이, 공유 약 180만 + 10만) 또는 쉬는 날(마사지·<b>Tamora Gallery</b> 4.6/907).',
+      '16:00 <b>FINNS</b>(4.7/49,696) 노을 → 20:00 <b>MUDA</b>(4.9/3,336) → <b>Miss Fish</b>(월 휴무라 <b>Vault</b> 4.6/2,209).'
+    ],'누사페니다 배는 2025년 8월 사누르 앞 사고가 있었어요. 파도 높은 날은 취소.'),
+    D('12/01 화','따나롯 → 울루와뚜 2박',[['이동 1.5시간','gray']],[
+      '10:00 체크아웃 → <b>따나롯</b>(4.7/103,420) → 13:00 울루와뚜 빌라 → <b>Bukit Cafe</b>(4.5/1,956).',
+      '16:30 <b>Single Fin</b>(4.6/14,352) 절벽 위 서퍼 바 노을 → 저녁 거기서.'
+    ],''),
+    D('12/02 수','절벽 해변 → 사원 노을',[['울루와뚜','ok']],[
+      '09:00 <b>Melasti 해변</b>(4.6/4,538) → 11:00 <b>Suluban 동굴 해변</b>(4.6/2,195) → 13:00 <b>Sundays Beach Club</b>(4.5/6,248) 엘리베이터로 내려가는 해변.',
+      '17:00 <b>울루와뚜 사원</b>(4.6/53,501) 노을 → 19:30 <b>El Kabron</b>(4.7/14,825) 저녁.'
+    ],''),
+    D('12/03 목','스미냑 → 밤 비행',[['비행','sea']],[
+      '11:00 체크아웃 → 스미냑 <b>Potato Head</b>(4.6/24,997) 또는 <b>KU DE TA</b>(4.5/10,120) 낮·노을.',
+      '아시아나 1명 15시 공항 → 자카르타 → <b>22:30 OZ762</b>.',
+      '19:00 <b>Ling-Ling\'s</b>(4.9/9,894) 또는 <b>Naughty Nuri\'s</b>(4.7/14,781) 폭립 → 20:30 공항(20분) → <b>23:45 KE634</b>.'
+    ],'','fly'),
+    DAY_HOME],
+  pros:['비행기·배 없이 차로만, 가장 싸고 가장 안전','비 오면 일정 바꾸기 쉬움','울루와뚜 절벽 바·해변 클럽이 들어감','빌라 3곳 모두 3침실로 각자 침대 가능'],
+  cons:['롬복(그루뿍 서핑·핑크비치·길리)이 빠짐 — 형님이 롬복을 원하심','누사페니다 배는 파도에 따라 취소','짱구·우붓만 보면 "발리 한 번 더 간 느낌"']
+};
+var OPTS=[OPT1,OPT2,OPT3];
+
+var cur=0,map,layer,mapMode='sky';
+function renderTabs(){
+  var h='';OPTS.forEach(function(o,i){h+='<button class="'+(i===cur?'on':'')+'" onclick="pick('+i+')">'+o.name+' · '+o.tag+'<small>'+o.sub+'</small></button>';});
+  document.getElementById('tabs').innerHTML=h;
+}
+function flLine(f){
+  var c=AIR[f.al].c; var sameDay=f.ad===f.day;
+  var arr=(sameDay?'':f.ad.replace(/^0/,'').replace('/0','/')+' ')+f.arr+' 도착';
+  return '<div class="fl" style="border-left-color:'+c+'"><b>'+f.dep+' '+f.f+'→'+f.t+'</b><span>'+arr+' · '+f.no+' · '+f.load+'</span></div>';
+}
+function renderCal(o){
+  var h='';['월','화','수','목','금','토','일'].forEach(function(w){h+='<div class="wd">'+w+'</div>';});
+  WEEKS.forEach(function(wk){wk.forEach(function(d){
+    var on=TRIP.indexOf(d)>=0;var dn=d.replace(/^0/,'').replace('/0','/');
+    if(!on){h+='<div class="cell off"><div class="dn">'+dn+'</div></div>';return;}
+    var fls=o.flights.filter(function(f){return f.day===d;});
+    h+='<div class="cell"><div class="dn"><span>'+dn+'</span><span class="sleep">🛏 '+(o.sleep[d]||'')+'</span></div>';
+    fls.forEach(function(f){h+=flLine(f);});
+    if(!fls.length){h+='<div class="fl drive"><b>🌴 현지</b></div>';}
+    h+='</div>';
+  });});
+  document.getElementById('cal').innerHTML=h;
+  var l='';TRIP.forEach(function(d){
+    var dn=d.replace(/^0/,'').replace('/0','/');var fls=o.flights.filter(function(f){return f.day===d;});
+    l+='<div class="row"><div class="d">'+dn+'<small>'+WD[d]+' · 🛏 '+(o.sleep[d]||'')+'</small></div><div class="fls">';
+    if(fls.length){fls.forEach(function(f){l+=flLine(f);});}else{l+='<span style="color:var(--mute)">비행 없음 · 현지</span>';}
+    l+='</div></div>';
+  });
+  document.getElementById('callist').innerHTML=l;
+  var used={};o.flights.forEach(function(f){used[f.al]=1;});
+  var g='';Object.keys(used).forEach(function(k){g+='<span><i style="background:'+AIR[k].c+'"></i>'+AIR[k].n+' ('+k+')</span>';});
+  g+='<span>🛏 = 그날 밤 자는 곳</span><span>시각 = 그 도시 현지 시간 (발리·롬복은 한국보다 1시간 느림, 자카르타는 2시간)</span>';
+  document.getElementById('legend').innerHTML=g;
+}
+function renderDays(o){
+  var h='';o.days.forEach(function(d){
+    h+='<div class="day '+d.cls+'"><div class="dh"><span class="dt">'+d.d+'</span> '+d.t;
+    d.pills.forEach(function(p){h+=' <span class="pill '+(p[1]||'')+'">'+p[0]+'</span>';});
+    h+='</div><ul>';d.items.forEach(function(it){h+='<li>'+it+'</li>';});h+='</ul>';
+    if(d.tip)h+='<div class="tip">💡 '+d.tip+'</div>';h+='</div>';
+  });
+  document.getElementById('days').innerHTML=h;
+}
+function renderPC(o){
+  var h='<div><h4>👍 좋은 점</h4><ul>';o.pros.forEach(function(p){h+='<li>'+p+'</li>';});h+='</ul></div>';
+  h+='<div><h4>👎 아쉬운 점</h4><ul>';o.cons.forEach(function(p){h+='<li>'+p+'</li>';});h+='</ul></div>';
+  document.getElementById('pc').innerHTML=h;
+}
+function gc(a,b,n){
+  var toR=Math.PI/180,toD=180/Math.PI;
+  var la1=a.lat*toR,lo1=a.lng*toR,la2=b.lat*toR,lo2=b.lng*toR;
+  var d=2*Math.asin(Math.sqrt(Math.pow(Math.sin((la1-la2)/2),2)+Math.cos(la1)*Math.cos(la2)*Math.pow(Math.sin((lo1-lo2)/2),2)));
+  var pts=[],prev=null;
+  for(var i=0;i<=n;i++){var f=i/n;var A=Math.sin((1-f)*d)/Math.sin(d),B=Math.sin(f*d)/Math.sin(d);
+    var x=A*Math.cos(la1)*Math.cos(lo1)+B*Math.cos(la2)*Math.cos(lo2),y=A*Math.cos(la1)*Math.sin(lo1)+B*Math.cos(la2)*Math.sin(lo2),z=A*Math.sin(la1)+B*Math.sin(la2);
+    var lat=Math.atan2(z,Math.sqrt(x*x+y*y))*toD,lng=Math.atan2(y,x)*toD;
+    if(prev!==null){while(lng-prev>180)lng-=360;while(prev-lng>180)lng+=360;}
+    prev=lng;pts.push([lat,lng]);}
+  return pts;
+}
+function showSky(o){
+  layer=L.layerGroup().addTo(map);var bounds=[];var seen={};var cnt={};
+  o.sky.forEach(function(leg){
+    var key=[leg[0],leg[1]].sort().join('-');cnt[key]=(cnt[key]||0)+1;var k=cnt[key];
+    var a=AP[leg[0]],b=AP[leg[1]];var pts=gc(a,b,40);
+    if(k>1){pts=pts.map(function(p){return [p[0]-0.5,p[1]+0.5];});}
+    L.polyline(pts,{color:AIR[leg[2]].c,weight:3,opacity:.85,dashArray:k>1?'8,6':null}).addTo(layer);
+    pts.forEach(function(p){bounds.push(p);});
+    [[leg[0],[a.lat,a.lng]],[leg[1],[b.lat,b.lng]]].forEach(function(x){
+      if(seen[x[0]])return;seen[x[0]]=1;
+      L.marker(x[1],{icon:L.divIcon({html:'<div class="aplabel">'+x[0]+' '+AP[x[0]].n+'</div>',className:'',iconSize:null,iconAnchor:[-6,10]})}).addTo(layer);
+      L.circleMarker(x[1],{radius:5,color:'#333',fillColor:'#fff',fillOpacity:1,weight:2}).addTo(layer);
+    });
+  });
+  map.fitBounds(bounds,{padding:[20,20],animate:false});
+  document.getElementById('mapnote').textContent='하늘길: 인천→발리(대한항공) · 인천→자카르타→발리(아시아나+국내선)'+(o.lombok?' · 발리↔롬복(윙스에어)':'')+' · 돌아오는 길은 점선. 선 색 = 항공사.';
+}
+function showPts(pts,title){
+  layer=L.layerGroup().addTo(map);var line=[],bounds=[];var zones={};
+  pts.forEach(function(p,i){
+    var col=C[p.z]||'#555';zones[p.z]=1;
+    var ic=L.divIcon({html:'<div class="num" style="background:'+col+'">'+(i+1)+'</div>',className:'',iconSize:[24,24],iconAnchor:[12,12]});
+    L.marker([p.lat,p.lng],{icon:ic}).addTo(layer).bindPopup('<div class="pop"><b>'+(i+1)+'. '+p.name+'</b><br><span class="m">'+p.day+' · '+ZONE[p.z]+'</span><br>'+(p.memo||'')+'</div>');
+    line.push([p.lat,p.lng]);bounds.push([p.lat,p.lng]);
+  });
+  L.polyline(line,{color:'#555',weight:2,opacity:.5,dashArray:'6,6'}).addTo(layer);
+  map.fitBounds(bounds,{padding:[30,30],animate:false});
+  var lg=Object.keys(zones).map(function(z){return '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><i style="width:11px;height:11px;border-radius:50%;background:'+C[z]+';display:inline-block"></i>'+ZONE[z]+'</span>';}).join('');
+  document.getElementById('mapnote').innerHTML=title+' · 번호 순서로 돕니다. '+lg;
+}
+function setMap(mode){
+  var o=OPTS[cur];if(mode==='lombok'&&!o.lombok)mode='bali';mapMode=mode;
+  if(layer){map.removeLayer(layer);layer=null;}
+  if(mode==='sky')showSky(o);else if(mode==='lombok')showPts(o.lombok,'롬복 동선 · '+o.tag);else showPts(o.bali,'발리 동선 · '+o.tag);
+  var b='';[['sky','✈ 하늘길'],['bali','🌴 발리 동선']].concat(o.lombok?[['lombok','🏄 롬복 동선']]:[]).forEach(function(x){b+='<button class="'+(x[0]===mode?'on':'')+'" onclick="setMap(\''+x[0]+'\')">'+x[1]+'</button>';});
+  document.getElementById('mapbtns').innerHTML=b;
+}
+function pick(i){
+  cur=i;var o=OPTS[i];renderTabs();renderCal(o);renderDays(o);renderPC(o);
+  var sb=document.getElementById('sumbar');if(!sb){sb=document.createElement('div');sb.id='sumbar';sb.className='bar';document.getElementById('tabs').insertAdjacentElement('afterend',sb);}
+  sb.innerHTML='📌 '+o.summary;
+  if(!o.lombok&&mapMode==='lombok')mapMode='bali';
+  setMap(mapMode);
+  try{localStorage.setItem('bali3opt',String(i));}catch(e){}
+}
+map=L.map('map',{scrollWheelZoom:false,minZoom:2,worldCopyJump:false});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+var saved=0;try{saved=parseInt(localStorage.getItem('bali3opt')||'0',10)||0;}catch(e){}
+pick(saved);
+</script>
+</body>
+</html>
